@@ -16,7 +16,7 @@ if (!(Test-Path "package.json")) {
 if ($Show) {
     Write-Host "Showing migration history..." -ForegroundColor Yellow
     try {
-        npm run typeorm -- migration:show -d src/data-source.ts
+        npm run typeorm:migration:run -- --dry-run
     } catch {
         Write-Host "Error showing migrations: $_" -ForegroundColor Red
     }
@@ -29,7 +29,7 @@ if ($Revert) {
     
     if ($confirmation -eq 'y' -or $confirmation -eq 'Y') {
         try {
-            npm run typeorm -- migration:revert -d src/data-source.ts
+            npm run typeorm:migration:revert
             
             if ($LASTEXITCODE -eq 0) {
                 Write-Host "Migration reverted successfully!" -ForegroundColor Green
@@ -48,17 +48,11 @@ if ($Revert) {
 Write-Host "Running migrations..." -ForegroundColor Yellow
 
 try {
-    Write-Host "`nCurrent migration status:" -ForegroundColor Blue
-    npm run typeorm -- migration:show -d src/data-source.ts
-    
     Write-Host "`nApplying new migrations..." -ForegroundColor Yellow
-    npm run migration:run
+    npm run typeorm:migration:run
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "All migrations applied successfully!" -ForegroundColor Green
-        
-        Write-Host "`nUpdated status:" -ForegroundColor Blue
-        npm run typeorm -- migration:show -d src/data-source.ts
     } else {
         Write-Host "Error running migrations" -ForegroundColor Red
     }

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('payments')
 export class Payment {
@@ -8,18 +8,40 @@ export class Payment {
   @Column()
   userId: string;
 
-  @Column()
+  @Column('decimal', { precision: 10, scale: 2 })
   amount: number;
 
-  @Column()
+  @Column({ length: 3 })
   currency: string;
 
-  @Column()
-  status: string; // 'pending', 'success', 'failed'
+  @Column({ 
+    type: 'enum', 
+    enum: ['pending', 'processing', 'succeeded', 'failed', 'canceled'],
+    default: 'pending'
+  })
+  status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'canceled';
 
   @Column({ nullable: true })
-  stripePaymentId?: string;
+  stripePaymentIntentId?: string;
+
+  @Column({ nullable: true })
+  stripeCustomerId?: string;
+
+  @Column({ nullable: true })
+  description?: string;
+
+  @Column({ nullable: true })
+  metadata?: string; // JSON string for additional data
+
+  @Column({ nullable: true })
+  failureReason?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  processedAt?: Date;
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 } 
