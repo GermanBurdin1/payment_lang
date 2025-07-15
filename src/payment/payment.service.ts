@@ -93,24 +93,57 @@ export class PaymentService {
         throw new NotFoundException('Payment not found');
       }
 
-      // Подтверждаем Payment Intent
-      const paymentIntent = await this.stripe.paymentIntents.confirm(dto.paymentIntentId, {
-        payment_method: dto.paymentMethodId,
-      });
+      // Получаем текущий статус payment intent из Stripe
+      const paymentIntent = await this.stripe.paymentIntents.retrieve(dto.paymentIntentId);
 
-      // Обновляем статус в базе данных
-      payment.status = paymentIntent.status as any;
-      payment.processedAt = new Date();
-
+      // Если payment intent уже подтвержден, просто обновляем статус в БД
       if (paymentIntent.status === 'succeeded') {
+        this.logger.log(`Payment intent ${dto.paymentIntentId} already succeeded, updating database status`);
+        
         payment.status = 'succeeded';
-      } else if (paymentIntent.status === 'requires_payment_method') {
-        payment.status = 'failed';
-        payment.failureReason = 'Payment method required';
-      } else if (paymentIntent.status === 'requires_action') {
-        payment.status = 'processing';
+        payment.processedAt = new Date();
+        
+        const updatedPayment = await this.paymentRepo.save(payment);
+
+        return {
+          paymentId: updatedPayment.id,
+          status: updatedPayment.status,
+          paymentIntent: paymentIntent,
+        };
       }
 
+      // Если payment intent еще не подтвержден, пытаемся подтвердить
+      if (paymentIntent.status === 'requires_payment_method' || paymentIntent.status === 'requires_confirmation') {
+        const confirmedPaymentIntent = await this.stripe.paymentIntents.confirm(dto.paymentIntentId, {
+          payment_method: dto.paymentMethodId,
+        });
+
+        // Обновляем статус в базе данных
+        payment.status = confirmedPaymentIntent.status as any;
+        payment.processedAt = new Date();
+
+        if (confirmedPaymentIntent.status === 'succeeded') {
+          payment.status = 'succeeded';
+        } else if (confirmedPaymentIntent.status === 'requires_payment_method') {
+          payment.status = 'failed';
+          payment.failureReason = 'Payment method required';
+        } else if (confirmedPaymentIntent.status === 'requires_action') {
+          payment.status = 'processing';
+        }
+
+        const updatedPayment = await this.paymentRepo.save(payment);
+
+        return {
+          paymentId: updatedPayment.id,
+          status: updatedPayment.status,
+          paymentIntent: confirmedPaymentIntent,
+        };
+      }
+
+      // Для других статусов просто обновляем БД
+      payment.status = paymentIntent.status as any;
+      payment.processedAt = new Date();
+      
       const updatedPayment = await this.paymentRepo.save(payment);
 
       return {
