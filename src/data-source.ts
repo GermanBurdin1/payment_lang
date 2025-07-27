@@ -17,4 +17,5 @@ export const AppDataSource = new DataSource({
   entities: [Payment],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
+  // TODO : configurer SSL et autres options de sécurité pour la prod
 }); 

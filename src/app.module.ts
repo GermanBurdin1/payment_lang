@@ -24,5 +24,6 @@ import { Payment } from './payment/payment.entity';
     }),
     PaymentModule,
   ],
+  // TODO : ajouter des modules de logging et monitoring pour les paiements
 })
 export class AppModule {} 

@@ -57,4 +57,6 @@ export class ConfirmPaymentDto {
   @IsOptional()
   @IsString()
   paymentMethodId?: string;
-} 
+}
+
+// TODO : ajouter des DTOs pour les refunds et la gestion des disputes 

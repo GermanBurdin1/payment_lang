@@ -39,6 +39,7 @@ export class Payment {
   @Column({ type: 'timestamp', nullable: true })
   processedAt?: Date;
 
+  // TODO : ajouter des champs pour les fees et commissions
   @CreateDateColumn()
   createdAt: Date;
 

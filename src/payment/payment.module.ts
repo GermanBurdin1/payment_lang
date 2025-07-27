@@ -13,5 +13,6 @@ import { Payment } from './payment.entity';
   controllers: [PaymentController],
   providers: [PaymentService],
   exports: [PaymentService],
+  // TODO : ajouter un module de notification pour les événements de paiement
 })
 export class PaymentModule {} 

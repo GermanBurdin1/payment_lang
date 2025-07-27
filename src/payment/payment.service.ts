@@ -27,9 +27,9 @@ export class PaymentService {
 
   async createPaymentIntent(dto: CreatePaymentIntentDto) {
     try {
-      this.logger.log(`Creating payment intent for user ${dto.userId}, amount: ${dto.amount} ${dto.currency}`);
+      this.logger.log(`[PaymentService] Création payment intent pour user ${dto.userId}, montant: ${dto.amount} ${dto.currency}`);
 
-      // Создаем или получаем customer
+      // on crée ou récupère le customer
       let customerId = dto.stripeCustomerId;
       if (!customerId) {
         const customer = await this.stripe.customers.create({
@@ -40,9 +40,9 @@ export class PaymentService {
         customerId = customer.id;
       }
 
-      // Создаем Payment Intent
+      // création du Payment Intent
       const paymentIntent = await this.stripe.paymentIntents.create({
-        amount: Math.round(dto.amount * 100), // Stripe работает в центах
+        amount: Math.round(dto.amount * 100), // Stripe fonctionne en centimes
         currency: dto.currency.toLowerCase(),
         customer: customerId,
         description: dto.description,
@@ -55,7 +55,7 @@ export class PaymentService {
         },
       });
 
-      // Сохраняем в базу данных
+      // sauvegarde en base de données
       const payment = this.paymentRepo.create({
         userId: dto.userId,
         amount: dto.amount,
@@ -76,29 +76,29 @@ export class PaymentService {
         customerId,
       };
     } catch (error) {
-      this.logger.error(`Error creating payment intent: ${error.message}`);
-      throw new BadRequestException(`Failed to create payment intent: ${error.message}`);
+      this.logger.error(`[PaymentService] Erreur lors de la création du payment intent: ${error.message}`);
+      throw new BadRequestException(`Échec de la création du payment intent: ${error.message}`);
     }
   }
 
   async confirmPayment(dto: ConfirmPaymentDto) {
     try {
-      this.logger.log(`Confirming payment intent: ${dto.paymentIntentId}`);
+      this.logger.log(`[PaymentService] Confirmation payment intent: ${dto.paymentIntentId}`);
 
       const payment = await this.paymentRepo.findOne({
         where: { stripePaymentIntentId: dto.paymentIntentId },
       });
 
       if (!payment) {
-        throw new NotFoundException('Payment not found');
+        throw new NotFoundException('Paiement non trouvé');
       }
 
-      // Получаем текущий статус payment intent из Stripe
+      // on récupère le statut actuel du payment intent depuis Stripe
       const paymentIntent = await this.stripe.paymentIntents.retrieve(dto.paymentIntentId);
 
-      // Если payment intent уже подтвержден, просто обновляем статус в БД
+      // si le payment intent est déjà confirmé, on met juste à jour le statut en BDD
       if (paymentIntent.status === 'succeeded') {
-        this.logger.log(`Payment intent ${dto.paymentIntentId} already succeeded, updating database status`);
+        this.logger.log(`[PaymentService] Payment intent ${dto.paymentIntentId} déjà réussi, mise à jour du statut en BDD`);
         
         payment.status = 'succeeded';
         payment.processedAt = new Date();
@@ -112,13 +112,13 @@ export class PaymentService {
         };
       }
 
-      // Если payment intent еще не подтвержден, пытаемся подтвердить
+      // si le payment intent n'est pas encore confirmé, on essaie de le confirmer
       if (paymentIntent.status === 'requires_payment_method' || paymentIntent.status === 'requires_confirmation') {
         const confirmedPaymentIntent = await this.stripe.paymentIntents.confirm(dto.paymentIntentId, {
           payment_method: dto.paymentMethodId,
         });
 
-        // Обновляем статус в базе данных
+        // mise à jour du statut en base de données
         payment.status = confirmedPaymentIntent.status as any;
         payment.processedAt = new Date();
 
@@ -140,7 +140,7 @@ export class PaymentService {
         };
       }
 
-      // Для других статусов просто обновляем БД
+      // pour les autres statuts on met juste à jour la BDD
       payment.status = paymentIntent.status as any;
       payment.processedAt = new Date();
       
@@ -152,8 +152,8 @@ export class PaymentService {
         paymentIntent: paymentIntent,
       };
     } catch (error) {
-      this.logger.error(`Error confirming payment: ${error.message}`);
-      throw new BadRequestException(`Failed to confirm payment: ${error.message}`);
+      this.logger.error(`[PaymentService] Erreur lors de la confirmation du paiement: ${error.message}`);
+      throw new BadRequestException(`Échec de la confirmation du paiement: ${error.message}`);
     }
   }
 
@@ -168,7 +168,7 @@ export class PaymentService {
 
       const event = this.stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 
-      this.logger.log(`Received webhook event: ${event.type}`);
+      this.logger.log(`[PaymentService] Webhook reçu: ${event.type}`);
 
       switch (event.type) {
         case 'payment_intent.succeeded':
@@ -181,13 +181,14 @@ export class PaymentService {
           await this.handlePaymentCanceled(event.data.object as Stripe.PaymentIntent);
           break;
         default:
-          this.logger.log(`Unhandled event type: ${event.type}`);
+          this.logger.log(`[PaymentService] Type d'événement non géré: ${event.type}`);
+          // TODO : implémenter la gestion d'autres types d'événements
       }
 
       return { received: true };
     } catch (error) {
-      this.logger.error(`Webhook error: ${error.message}`);
-      throw new BadRequestException(`Webhook error: ${error.message}`);
+      this.logger.error(`[PaymentService] Erreur webhook: ${error.message}`);
+      throw new BadRequestException(`Erreur webhook: ${error.message}`);
     }
   }
 
@@ -200,7 +201,7 @@ export class PaymentService {
       payment.status = 'succeeded';
       payment.processedAt = new Date();
       await this.paymentRepo.save(payment);
-      this.logger.log(`Payment ${payment.id} marked as succeeded`);
+      this.logger.log(`[PaymentService] Paiement ${payment.id} marqué comme réussi`);
     }
   }
 
@@ -211,10 +212,10 @@ export class PaymentService {
 
     if (payment) {
       payment.status = 'failed';
-      payment.failureReason = paymentIntent.last_payment_error?.message || 'Payment failed';
+      payment.failureReason = paymentIntent.last_payment_error?.message || 'Paiement échoué';
       payment.processedAt = new Date();
       await this.paymentRepo.save(payment);
-      this.logger.log(`Payment ${payment.id} marked as failed`);
+      this.logger.log(`[PaymentService] Paiement ${payment.id} marqué comme échoué`);
     }
   }
 
@@ -227,7 +228,7 @@ export class PaymentService {
       payment.status = 'canceled';
       payment.processedAt = new Date();
       await this.paymentRepo.save(payment);
-      this.logger.log(`Payment ${payment.id} marked as canceled`);
+      this.logger.log(`[PaymentService] Paiement ${payment.id} marqué comme annulé`);
     }
   }
 
@@ -244,7 +245,7 @@ export class PaymentService {
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment not found');
+      throw new NotFoundException('Paiement non trouvé');
     }
 
     return payment;
@@ -262,8 +263,8 @@ export class PaymentService {
 
       return customer;
     } catch (error) {
-      this.logger.error(`Error creating customer: ${error.message}`);
-      throw new BadRequestException(`Failed to create customer: ${error.message}`);
+      this.logger.error(`[PaymentService] Erreur lors de la création du customer: ${error.message}`);
+      throw new BadRequestException(`Échec de la création du customer: ${error.message}`);
     }
   }
 
@@ -271,8 +272,8 @@ export class PaymentService {
     try {
       return await this.stripe.customers.retrieve(customerId);
     } catch (error) {
-      this.logger.error(`Error retrieving customer: ${error.message}`);
-      throw new BadRequestException(`Failed to retrieve customer: ${error.message}`);
+      this.logger.error(`[PaymentService] Erreur lors de la récupération du customer: ${error.message}`);
+      throw new BadRequestException(`Échec de la récupération du customer: ${error.message}`);
     }
   }
 
@@ -283,7 +284,7 @@ export class PaymentService {
         amount: amount ? Math.round(amount * 100) : undefined,
       });
 
-      // Обновляем статус в базе данных
+      // mise à jour du statut en base de données
       const payment = await this.paymentRepo.findOne({
         where: { stripePaymentIntentId: paymentIntentId },
       });
@@ -292,12 +293,13 @@ export class PaymentService {
         payment.status = 'canceled';
         payment.processedAt = new Date();
         await this.paymentRepo.save(payment);
+        // TODO : peut-être créer une entité Refund séparée pour tracker les remboursements
       }
 
       return refund;
     } catch (error) {
-      this.logger.error(`Error refunding payment: ${error.message}`);
-      throw new BadRequestException(`Failed to refund payment: ${error.message}`);
+      this.logger.error(`[PaymentService] Erreur lors du remboursement: ${error.message}`);
+      throw new BadRequestException(`Échec du remboursement: ${error.message}`);
     }
   }
 } 

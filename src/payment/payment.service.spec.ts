@@ -32,6 +32,7 @@ describe('PaymentService', () => {
   };
 
   beforeEach(async () => {
+    // setup des mocks pour Stripe
     stripeMock = {
       customers: {
         create: jest.fn().mockResolvedValue({ id: 'cus_123' }),
