@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PaymentService } from './payment.service';
 import { Payment } from './payment.entity';
-import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 
 describe('PaymentService', () => {
