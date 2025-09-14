@@ -2,7 +2,7 @@ name: Payment Service CI/CD
 
 on:
   push:
-    branches: [ master ]
+    branches: [ base-branch ]
   pull_request:
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/base-branch'
     
     steps:
     - name: Checkout code
