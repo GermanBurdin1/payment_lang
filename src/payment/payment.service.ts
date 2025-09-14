@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { Payment } from './payment.entity';
-import { CreatePaymentDto, CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
 export class PaymentService {
@@ -159,7 +159,7 @@ export class PaymentService {
 
   async handleWebhook(signature: string, payload: Buffer) {
     try {
-      const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+      // const stripeSecretKey = this.configService.get<string>('STRIPE_SECRET_KEY');
       const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
 
       if (!webhookSecret) {

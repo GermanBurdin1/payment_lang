@@ -4,11 +4,9 @@ import { PaymentService } from './payment.service';
 import { Payment } from './payment.entity';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
-import Stripe from 'stripe';
 
 describe('PaymentService', () => {
   let service: PaymentService;
-  let repo: Repository<Payment>;
   let configService: ConfigService;
   let stripeMock: any;
 
@@ -68,8 +66,7 @@ describe('PaymentService', () => {
     }).compile();
 
     service = module.get<PaymentService>(PaymentService);
-    repo = module.get<Repository<Payment>>(getRepositoryToken(Payment));
-    // @ts-ignore
+    // @ts-expect-error - Setting private property for testing
     service.stripe = stripeMock;
   });
 
@@ -128,6 +125,6 @@ describe('PaymentService', () => {
 
   it('should throw NotFoundException if payment not found', async () => {
     repoMock.findOne.mockResolvedValueOnce(undefined);
-    await expect(service.getPaymentById('not-exist')).rejects.toThrow('Payment not found');
+    await expect(service.getPaymentById('not-exist')).rejects.toThrow('Paiement non trouvé');
   });
 }); 

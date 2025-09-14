@@ -47,7 +47,7 @@ describe('PaymentController', () => {
 
   it('should confirm payment', async () => {
     const dto = { paymentIntentId: 'pi_1', paymentMethodId: 'pm_1' };
-    const result = await controller.confirmPayment(dto);
+    await controller.confirmPayment(dto);
     expect(service.confirmPayment).toHaveBeenCalledWith(dto);
     // TODO : tester aussi le cas où la confirmation échoue
   });
