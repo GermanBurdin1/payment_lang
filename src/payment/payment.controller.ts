@@ -6,15 +6,10 @@ import {
   Param, 
   Headers,
   RawBodyRequest,
-  Req,
-  UseInterceptors,
-  UploadedFile,
-  ParseFilePipe,
-  MaxFileSizeValidator,
-  FileTypeValidator,
+  Req
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
-import { CreatePaymentDto, CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/create-payment.dto';
+import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/create-payment.dto';
 
 @Controller('payments')
 export class PaymentController {

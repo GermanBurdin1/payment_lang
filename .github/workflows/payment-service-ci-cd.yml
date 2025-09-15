@@ -1,0 +1,79 @@
+name: Payment Service CI/CD
+
+on:
+  push:
+    branches: [ base-branch ]
+  pull_request:
+
+concurrency:
+  group: payment-service-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: package-lock.json
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run linter
+      run: npm run lint
+      
+    - name: Run tests
+      run: npm run test
+      env:
+        CI: true
+      
+    - name: Build application
+      run: npm run build
+      
+    - name: Remove dev dependencies
+      run: npm prune --omit=dev
+      
+    - name: Create deployment archive
+      run: |
+        mkdir -p deployment
+        cp -r dist deployment/
+        cp -r node_modules deployment/
+        cp package.json deployment/
+        tar -czf payment-service-bundle.tgz -C deployment .
+      
+    - name: Deploy to server
+      if: github.ref == 'refs/heads/base-branch'
+      env:
+        OVH_HOST: ${{ secrets.OVH_HOST }}
+        OVH_USER: ${{ secrets.OVH_USER }}
+        SSH_KEY: ${{ secrets.OVH_SSH_KEY }}
+        REMOTE_DIR: /www/wwwroot/services/payment-service
+      run: |
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        echo "$SSH_KEY" > ~/.ssh/id_deploy
+        chmod 600 ~/.ssh/id_deploy
+        ssh-keyscan -p "${OVH_PORT:-22}" "$OVH_HOST" >> ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+        
+        # Создаем директорию на сервере
+        ssh -i ~/.ssh/id_deploy -p "${OVH_PORT:-22}" "${OVH_USER}@${OVH_HOST}" "sudo mkdir -p ${REMOTE_DIR} && sudo chown -R \${USER}:\${USER} ${REMOTE_DIR}"
+        
+        # Копируем архив на сервер
+        scp -i ~/.ssh/id_deploy -P "${OVH_PORT:-22}" payment-service-bundle.tgz "${OVH_USER}@${OVH_HOST}:${REMOTE_DIR}/"
+        
+        # Распаковываем и перезапускаем сервис
+        ssh -i ~/.ssh/id_deploy -p "${OVH_PORT:-22}" "${OVH_USER}@${OVH_HOST}" "
+          cd ${REMOTE_DIR} && 
+          tar -xzf payment-service-bundle.tgz && 
+          rm payment-service-bundle.tgz &&
+          NODE_ENV=production pm2 restart payment-service --update-env -f || NODE_ENV=production pm2 start dist/main.js --name payment-service &&
+          pm2 save"
