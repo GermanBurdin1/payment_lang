@@ -6,17 +6,26 @@ import {
   Param, 
   Headers,
   RawBodyRequest,
-  Req
+  Req,
+  Logger
 } from '@nestjs/common';
 import { PaymentService } from './payment.service';
 import { CreatePaymentIntentDto, ConfirmPaymentDto } from './dto/create-payment.dto';
 
 @Controller('payments')
 export class PaymentController {
+  private readonly logger = new Logger(PaymentController.name);
+
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('create-intent')
-  async createPaymentIntent(@Body() dto: CreatePaymentIntentDto) {
+  async createPaymentIntent(@Body() dto: CreatePaymentIntentDto, @Req() req: any) {
+    this.logger.log(`[Payment Service] === CREATE PAYMENT INTENT DEBUG ===`);
+    this.logger.log(`[Payment Service] Received request to: ${req.url}`);
+    this.logger.log(`[Payment Service] Request path: ${req.path}`);
+    this.logger.log(`[Payment Service] Request method: ${req.method}`);
+    this.logger.log(`[Payment Service] Request body:`, dto);
+    
     return this.paymentService.createPaymentIntent(dto);
   }
 

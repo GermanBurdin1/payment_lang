@@ -14,9 +14,15 @@ async function bootstrap() {
 
   app.enableCors();
 
-  const port = process.env.PORT || 3004;
+  const port = process.env.PORT || 3010;
   await app.listen(port);
   console.log(`[PaymentService] Service démarré sur le port ${port}`);
+  console.log(`[PaymentService] Routes disponibles:`);
+  console.log(`[PaymentService] - POST /payments/create-intent`);
+  console.log(`[PaymentService] - POST /payments/confirm`);
+  console.log(`[PaymentService] - POST /payments/webhook`);
+  console.log(`[PaymentService] - GET /payments/user/:userId`);
+  console.log(`[PaymentService] - GET /payments/:id`);
   // TODO : ajouter un health check endpoint
 }
 bootstrap(); 

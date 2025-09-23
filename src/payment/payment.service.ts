@@ -26,6 +26,9 @@ export class PaymentService {
   }
 
   async createPaymentIntent(dto: CreatePaymentIntentDto) {
+    this.logger.log(`[PaymentService] === CREATE PAYMENT INTENT SERVICE DEBUG ===`);
+    this.logger.log(`[PaymentService] Received DTO:`, dto);
+    
     try {
       this.logger.log(`[PaymentService] Création payment intent pour user ${dto.userId}, montant: ${dto.amount} ${dto.currency}`);
 
