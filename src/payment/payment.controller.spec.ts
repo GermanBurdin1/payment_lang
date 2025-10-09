@@ -40,15 +40,17 @@ describe('PaymentController', () => {
 
   it('should create payment intent', async () => {
     const dto = { userId: 'u1', amount: 100, currency: 'EUR' };
-    const result = await controller.createPaymentIntent(dto);
-    expect(service.createPaymentIntent).toHaveBeenCalledWith(dto);
+    const mockReq = { user: { sub: 'user1' } };
+    const result = await controller.createPaymentIntent(dto, mockReq);
+    expect(service.createPaymentIntent).toHaveBeenCalledWith(dto, 'user1');
     expect(result).toEqual({ paymentId: '1', clientSecret: 'secret' });
   });
 
   it('should confirm payment', async () => {
     const dto = { paymentIntentId: 'pi_1', paymentMethodId: 'pm_1' };
-    await controller.confirmPayment(dto);
-    expect(service.confirmPayment).toHaveBeenCalledWith(dto);
+    const mockReq = { user: { sub: 'user1' } };
+    await controller.confirmPayment(dto, mockReq);
+    expect(service.confirmPayment).toHaveBeenCalledWith(dto, 'user1');
     // TODO : tester aussi le cas où la confirmation échoue
   });
 
@@ -61,34 +63,39 @@ describe('PaymentController', () => {
   });
 
   it('should get payments for user', async () => {
-    const result = await controller.getForUser('u1');
-    expect(service.getPaymentsForUser).toHaveBeenCalledWith('u1');
+    const mockReq = { user: { sub: 'user1' } };
+    const result = await controller.getForUser('u1', mockReq);
+    expect(service.getPaymentsForUser).toHaveBeenCalledWith('u1', 'user1');
     expect(result).toEqual([{ id: '1' }]);
   });
 
   it('should get payment by id', async () => {
-    const result = await controller.getPayment('1');
-    expect(service.getPaymentById).toHaveBeenCalledWith('1');
+    const mockReq = { user: { sub: 'user1' } };
+    const result = await controller.getPayment('1', mockReq);
+    expect(service.getPaymentById).toHaveBeenCalledWith('1', 'user1');
     expect(result).toEqual({ id: '1' });
   });
 
   it('should create customer', async () => {
     const body = { userId: 'u1', email: 'test@mail.com', name: 'Test' };
-    const result = await controller.createCustomer(body);
-    expect(service.createCustomer).toHaveBeenCalledWith('u1', 'test@mail.com', 'Test');
+    const mockReq = { user: { sub: 'user1' } };
+    const result = await controller.createCustomer(body, mockReq);
+    expect(service.createCustomer).toHaveBeenCalledWith('u1', 'test@mail.com', 'Test', 'user1');
     expect(result).toEqual({ id: 'cus_1' });
   });
 
   it('should get customer', async () => {
-    const result = await controller.getCustomer('cus_1');
-    expect(service.getCustomer).toHaveBeenCalledWith('cus_1');
+    const mockReq = { user: { sub: 'user1' } };
+    const result = await controller.getCustomer('cus_1', mockReq);
+    expect(service.getCustomer).toHaveBeenCalledWith('cus_1', 'user1');
     expect(result).toEqual({ id: 'cus_1', email: 'test@mail.com' });
   });
 
   it('should refund payment', async () => {
     const body = { paymentIntentId: 'pi_1', amount: 10 };
-    const result = await controller.refundPayment(body);
-    expect(service.refundPayment).toHaveBeenCalledWith('pi_1', 10);
+    const mockReq = { user: { sub: 'user1' } };
+    const result = await controller.refundPayment(body, mockReq);
+    expect(service.refundPayment).toHaveBeenCalledWith('pi_1', 10, 'user1');
     expect(result).toEqual({ id: 're_1', status: 'succeeded' });
   });
 }); 

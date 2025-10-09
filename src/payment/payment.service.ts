@@ -25,7 +25,12 @@ export class PaymentService {
     });
   }
 
-  async createPaymentIntent(dto: CreatePaymentIntentDto) {
+  async createPaymentIntent(dto: CreatePaymentIntentDto, currentUserId?: string) {
+    // Проверяем, что пользователь создает платеж для себя
+    if (currentUserId && dto.userId !== currentUserId) {
+      throw new Error('Unauthorized: You can only create payments for yourself');
+    }
+    
     this.logger.log(`[PaymentService] === CREATE PAYMENT INTENT SERVICE DEBUG ===`);
     this.logger.log(`[PaymentService] Received DTO:`, dto);
     
@@ -84,7 +89,7 @@ export class PaymentService {
     }
   }
 
-  async confirmPayment(dto: ConfirmPaymentDto) {
+  async confirmPayment(dto: ConfirmPaymentDto, currentUserId?: string) {
     try {
       this.logger.log(`[PaymentService] Confirmation payment intent: ${dto.paymentIntentId}`);
 
@@ -94,6 +99,11 @@ export class PaymentService {
 
       if (!payment) {
         throw new NotFoundException('Paiement non trouvé');
+      }
+
+      // Проверяем владение, если передан currentUserId
+      if (currentUserId && payment.userId !== currentUserId) {
+        throw new Error('Unauthorized: You can only confirm your own payments');
       }
 
       // on récupère le statut actuel du payment intent depuis Stripe
@@ -235,14 +245,19 @@ export class PaymentService {
     }
   }
 
-  async getPaymentsForUser(userId: string) {
+  async getPaymentsForUser(userId: string, currentUserId?: string) {
+    // Проверяем владение, если передан currentUserId
+    if (currentUserId && userId !== currentUserId) {
+      throw new Error('Unauthorized: You can only view your own payments');
+    }
+    
     return this.paymentRepo.find({
       where: { userId },
       order: { createdAt: 'DESC' },
     });
   }
 
-  async getPaymentById(paymentId: string) {
+  async getPaymentById(paymentId: string, currentUserId?: string) {
     const payment = await this.paymentRepo.findOne({
       where: { id: paymentId },
     });
@@ -251,10 +266,20 @@ export class PaymentService {
       throw new NotFoundException('Paiement non trouvé');
     }
 
+    // Проверяем владение, если передан currentUserId
+    if (currentUserId && payment.userId !== currentUserId) {
+      throw new Error('Unauthorized: You can only view your own payments');
+    }
+
     return payment;
   }
 
-  async createCustomer(userId: string, email?: string, name?: string) {
+  async createCustomer(userId: string, email?: string, name?: string, currentUserId?: string) {
+    // Проверяем, что пользователь создает клиента для себя
+    if (currentUserId && userId !== currentUserId) {
+      throw new Error('Unauthorized: You can only create customers for yourself');
+    }
+    
     try {
       const customer = await this.stripe.customers.create({
         email,
@@ -271,16 +296,38 @@ export class PaymentService {
     }
   }
 
-  async getCustomer(customerId: string) {
+  async getCustomer(customerId: string, currentUserId?: string) {
     try {
-      return await this.stripe.customers.retrieve(customerId);
+      const customer = await this.stripe.customers.retrieve(customerId);
+      
+      // Проверяем владение, если передан currentUserId
+      if (currentUserId && 'metadata' in customer && customer.metadata?.userId !== currentUserId) {
+        throw new Error('Unauthorized: You can only view your own customers');
+      }
+      
+      return customer;
     } catch (error) {
       this.logger.error(`[PaymentService] Erreur lors de la récupération du customer: ${error.message}`);
       throw new BadRequestException(`Échec de la récupération du customer: ${error.message}`);
     }
   }
 
-  async refundPayment(paymentIntentId: string, amount?: number) {
+  async refundPayment(paymentIntentId: string, amount?: number, currentUserId?: string) {
+    // Проверяем владение платежом перед возвратом
+    if (currentUserId) {
+      const payment = await this.paymentRepo.findOne({
+        where: { stripePaymentIntentId: paymentIntentId },
+      });
+      
+      if (!payment) {
+        throw new NotFoundException('Payment not found');
+      }
+      
+      if (payment.userId !== currentUserId) {
+        throw new Error('Unauthorized: You can only refund your own payments');
+      }
+    }
+    
     try {
       const refund = await this.stripe.refunds.create({
         payment_intent: paymentIntentId,
